@@ -1,0 +1,520 @@
+{
+  "av1-aac.mp4": {
+    "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
+    "size": 151707,
+    "duration": 4.0,
+    "bitRate": 303414,
+    "creationTime": "2026-10-14T12:00:00.000000Z",
+    "streams": 2,
+    "video": {
+      "codec": "av1",
+      "codecTag": "av01",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": 120,
+      "duration": 4.0,
+      "bitRate": 200414,
+      "rotate": null,
+      "sideData": null,
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [
+      {
+        "codec": "aac",
+        "codecTag": "mp4a",
+        "channels": 2,
+        "sampleRate": 48000,
+        "duration": 4.0,
+        "bitRate": 93254
+      }
+    ],
+    "keyframes": [
+      0.0,
+      1.0,
+      2.0,
+      3.0
+    ],
+    "videoPackets": 120
+  },
+  "h264-aac-faststart.mp4": {
+    "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
+    "size": 191556,
+    "duration": 4.0,
+    "bitRate": 383112,
+    "creationTime": "2026-10-14T12:00:00.000000Z",
+    "streams": 2,
+    "video": {
+      "codec": "h264",
+      "codecTag": "avc1",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": 120,
+      "duration": 4.0,
+      "bitRate": 278236,
+      "rotate": null,
+      "sideData": null,
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [
+      {
+        "codec": "aac",
+        "codecTag": "mp4a",
+        "channels": 2,
+        "sampleRate": 48000,
+        "duration": 4.0,
+        "bitRate": 93254
+      }
+    ],
+    "keyframes": [
+      0.0,
+      1.0,
+      2.0,
+      3.0
+    ],
+    "videoPackets": 120
+  },
+  "h264-aac-mdat-first.mp4": {
+    "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
+    "size": 191556,
+    "duration": 4.0,
+    "bitRate": 383112,
+    "creationTime": "2026-10-14T12:00:00.000000Z",
+    "streams": 2,
+    "video": {
+      "codec": "h264",
+      "codecTag": "avc1",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": 120,
+      "duration": 4.0,
+      "bitRate": 278236,
+      "rotate": null,
+      "sideData": null,
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [
+      {
+        "codec": "aac",
+        "codecTag": "mp4a",
+        "channels": 2,
+        "sampleRate": 48000,
+        "duration": 4.0,
+        "bitRate": 93254
+      }
+    ],
+    "keyframes": [
+      0.0,
+      1.0,
+      2.0,
+      3.0
+    ],
+    "videoPackets": 120
+  },
+  "h264-aac.mkv": {
+    "formatName": "matroska,webm",
+    "size": 188833,
+    "duration": 4.021,
+    "bitRate": 375693,
+    "creationTime": null,
+    "streams": 2,
+    "video": {
+      "codec": "h264",
+      "codecTag": "[0][0][0][0]",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": null,
+      "duration": null,
+      "bitRate": null,
+      "rotate": null,
+      "sideData": null,
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [
+      {
+        "codec": "aac",
+        "codecTag": "[0][0][0][0]",
+        "channels": 2,
+        "sampleRate": 48000,
+        "duration": null,
+        "bitRate": null
+      }
+    ],
+    "keyframes": [
+      0.0,
+      1.021,
+      2.021,
+      3.021
+    ],
+    "videoPackets": 120
+  },
+  "h264-aac.mov": {
+    "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
+    "size": 191607,
+    "duration": 4.0,
+    "bitRate": 383214,
+    "creationTime": null,
+    "streams": 2,
+    "video": {
+      "codec": "h264",
+      "codecTag": "avc1",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": 120,
+      "duration": 4.0,
+      "bitRate": 278236,
+      "rotate": null,
+      "sideData": null,
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [
+      {
+        "codec": "aac",
+        "codecTag": "mp4a",
+        "channels": 2,
+        "sampleRate": 48000,
+        "duration": 4.0,
+        "bitRate": 93254
+      }
+    ],
+    "keyframes": [
+      0.0,
+      1.0,
+      2.0,
+      3.0
+    ],
+    "videoPackets": 120
+  },
+  "hevc-aac.mp4": {
+    "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
+    "size": 181161,
+    "duration": 4.0,
+    "bitRate": 362322,
+    "creationTime": "2026-10-14T12:00:00.000000Z",
+    "streams": 2,
+    "video": {
+      "codec": "hevc",
+      "codecTag": "hvc1",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": 120,
+      "duration": 4.0,
+      "bitRate": 252364,
+      "rotate": null,
+      "sideData": null,
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [
+      {
+        "codec": "aac",
+        "codecTag": "mp4a",
+        "channels": 2,
+        "sampleRate": 48000,
+        "duration": 4.0,
+        "bitRate": 93254
+      }
+    ],
+    "keyframes": [
+      0.0,
+      1.0,
+      2.0,
+      3.0
+    ],
+    "videoPackets": 120
+  },
+  "rotated-270.mp4": {
+    "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
+    "size": 191556,
+    "duration": 4.0,
+    "bitRate": 383112,
+    "creationTime": null,
+    "streams": 2,
+    "video": {
+      "codec": "h264",
+      "codecTag": "avc1",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": 120,
+      "duration": 4.0,
+      "bitRate": 278236,
+      "rotate": "270",
+      "sideData": [
+        {
+          "side_data_type": "Display Matrix",
+          "displaymatrix": "\n00000000:            0      -65536           0\n00000001:        65536           0           0\n00000002:            0    20971520  1073741824\n",
+          "rotation": 90
+        }
+      ],
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [
+      {
+        "codec": "aac",
+        "codecTag": "mp4a",
+        "channels": 2,
+        "sampleRate": 48000,
+        "duration": 4.0,
+        "bitRate": 93254
+      }
+    ],
+    "keyframes": [
+      0.0,
+      1.0,
+      2.0,
+      3.0
+    ],
+    "videoPackets": 120
+  },
+  "rotated-90.mp4": {
+    "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
+    "size": 191556,
+    "duration": 4.0,
+    "bitRate": 383112,
+    "creationTime": null,
+    "streams": 2,
+    "video": {
+      "codec": "h264",
+      "codecTag": "avc1",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": 120,
+      "duration": 4.0,
+      "bitRate": 278236,
+      "rotate": "90",
+      "sideData": [
+        {
+          "side_data_type": "Display Matrix",
+          "displaymatrix": "\n00000000:            0       65536           0\n00000001:       -65536           0           0\n00000002:     11796480           0  1073741824\n",
+          "rotation": -90
+        }
+      ],
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [
+      {
+        "codec": "aac",
+        "codecTag": "mp4a",
+        "channels": 2,
+        "sampleRate": 48000,
+        "duration": 4.0,
+        "bitRate": 93254
+      }
+    ],
+    "keyframes": [
+      0.0,
+      1.0,
+      2.0,
+      3.0
+    ],
+    "videoPackets": 120
+  },
+  "silent.mp4": {
+    "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
+    "size": 141412,
+    "duration": 4.0,
+    "bitRate": 282824,
+    "creationTime": null,
+    "streams": 1,
+    "video": {
+      "codec": "h264",
+      "codecTag": "avc1",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": 120,
+      "duration": 4.0,
+      "bitRate": 278236,
+      "rotate": null,
+      "sideData": null,
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [],
+    "keyframes": [
+      0.0,
+      1.0,
+      2.0,
+      3.0
+    ],
+    "videoPackets": 120
+  },
+  "two-audio.mp4": {
+    "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
+    "size": 216652,
+    "duration": 4.0,
+    "bitRate": 433304,
+    "creationTime": null,
+    "streams": 3,
+    "video": {
+      "codec": "h264",
+      "codecTag": "avc1",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": 120,
+      "duration": 4.0,
+      "bitRate": 278236,
+      "rotate": null,
+      "sideData": null,
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [
+      {
+        "codec": "aac",
+        "codecTag": "mp4a",
+        "channels": 2,
+        "sampleRate": 48000,
+        "duration": 4.0,
+        "bitRate": 93254
+      },
+      {
+        "codec": "aac",
+        "codecTag": "mp4a",
+        "channels": 1,
+        "sampleRate": 44100,
+        "duration": 4.0,
+        "bitRate": 47950
+      }
+    ],
+    "keyframes": [
+      0.0,
+      1.0,
+      2.0,
+      3.0
+    ],
+    "videoPackets": 120
+  },
+  "vp9-opus-live.webm": {
+    "formatName": "matroska,webm",
+    "size": 289693,
+    "duration": null,
+    "bitRate": null,
+    "creationTime": null,
+    "streams": 2,
+    "video": {
+      "codec": "vp9",
+      "codecTag": "[0][0][0][0]",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": null,
+      "duration": null,
+      "bitRate": null,
+      "rotate": null,
+      "sideData": null,
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [
+      {
+        "codec": "opus",
+        "codecTag": "[0][0][0][0]",
+        "channels": 2,
+        "sampleRate": 48000,
+        "duration": null,
+        "bitRate": null
+      }
+    ],
+    "keyframes": [
+      0.007,
+      1.007,
+      2.007,
+      3.007
+    ],
+    "videoPackets": 120
+  },
+  "vp9-opus.webm": {
+    "formatName": "matroska,webm",
+    "size": 289794,
+    "duration": 4.008,
+    "bitRate": 578431,
+    "creationTime": null,
+    "streams": 2,
+    "video": {
+      "codec": "vp9",
+      "codecTag": "[0][0][0][0]",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": null,
+      "duration": null,
+      "bitRate": null,
+      "rotate": null,
+      "sideData": null,
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [
+      {
+        "codec": "opus",
+        "codecTag": "[0][0][0][0]",
+        "channels": 2,
+        "sampleRate": 48000,
+        "duration": null,
+        "bitRate": null
+      }
+    ],
+    "keyframes": [
+      0.007,
+      1.007,
+      2.007,
+      3.007
+    ],
+    "videoPackets": 120
+  },
+  "vp9-vorbis.webm": {
+    "formatName": "matroska,webm",
+    "size": 268334,
+    "duration": 4.003,
+    "bitRate": 536265,
+    "creationTime": null,
+    "streams": 2,
+    "video": {
+      "codec": "vp9",
+      "codecTag": "[0][0][0][0]",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": null,
+      "duration": null,
+      "bitRate": null,
+      "rotate": null,
+      "sideData": null,
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [
+      {
+        "codec": "vorbis",
+        "codecTag": "[0][0][0][0]",
+        "channels": 2,
+        "sampleRate": 48000,
+        "duration": null,
+        "bitRate": null
+      }
+    ],
+    "keyframes": [
+      0.003,
+      1.003,
+      2.003,
+      3.003
+    ],
+    "videoPackets": 120
+  }
+}

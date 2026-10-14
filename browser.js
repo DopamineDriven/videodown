@@ -1,1 +1,1 @@
-export * from '@d0paminedriven/videodown-wasm32-wasip1'
+export * from '@d0paminedriven/videodown-wasm32-wasi'

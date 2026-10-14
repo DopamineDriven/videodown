@@ -1,2 +1,10 @@
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]
+
+# napi's wasm tokio runtime (the `*Async` promises) is only compiled on the
+# threaded path under `--cfg tokio_unstable`; without it every async call
+# rejects with "Built-in Tokio async tasks require a threaded WASI target".
+# This is a rustc cfg, not a Cargo feature, so it lives here, scoped to the
+# one target that needs it. Mirrors napi-rs's own CI for wasm32-wasip1-threads.
+[target.wasm32-wasip1-threads]
+rustflags = ["--cfg", "tokio_unstable"]

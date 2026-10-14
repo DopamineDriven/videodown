@@ -1,21 +1,32 @@
 [package]
-authors = ["LongYinan <lynweklm@gmail.com>"]
-edition = "2021"
+edition = "2024"
+
+description = "Rust powered MP4/MOV/WebM/MKV demux, metadata, keyframe index and audio-track waveform peaks for Node"
+license = "MIT"
 name = "videodown"
+repository = "https://github.com/DopamineDriven/videodown"
 version = "0.1.0"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-napi-derive = "3.6.5"
-
-[dependencies.napi]
-version = "3.12.4"
-features = ["napi10"]
+mp4parse = "0.17.0"
+napi = { version = "3.14.2", features = ["napi10", "tokio_rt"] }
+napi-derive = "3.6.12"
+rayon = "1.12.0"
+symphonia = { version = "0.6.1", default-features = false, features = [
+  "isomp4",
+  "mkv",
+  "aac",
+  "vorbis",
+  "pcm",
+  "adpcm",
+  "opt-simd",
+] }
 
 [build-dependencies]
-napi-build = "2.4.2"
+napi-build = "2.6.0"
 
 [profile.release]
 lto = true

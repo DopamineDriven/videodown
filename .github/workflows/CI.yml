@@ -16,6 +16,7 @@ env:
       - '**/*.gitignore'
       - .editorconfig
       - docs/**
+      - adr/**
   pull_request: null
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -42,7 +43,9 @@ jobs:
       - name: Cargo fmt
         run: cargo fmt -- --check
       - name: Clippy
-        run: cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Cargo test
+        run: cargo test
   build:
     strategy:
       fail-fast: false
@@ -84,9 +87,6 @@ jobs:
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             build: yarn build --target aarch64-pc-windows-msvc
-          - host: ubuntu-latest
-            target: wasm32-wasip1
-            build: yarn build --target wasm32-wasip1
           - host: ubuntu-latest
             target: wasm32-wasip1-threads
             build: yarn build --target wasm32-wasip1-threads
@@ -348,7 +348,6 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          - wasm32-wasip1
           - wasm32-wasip1-threads
   publish:
     name: Publish
