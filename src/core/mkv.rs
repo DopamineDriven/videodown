@@ -52,6 +52,10 @@ mod id {
   pub const REFERENCE_BLOCK: u32 = 0xFB;
   pub const TAGS: u32 = 0x1254_C367;
   pub const ATTACHMENTS: u32 = 0x1941_A469;
+  pub const ATTACHED_FILE: u32 = 0x61A7;
+  pub const FILE_NAME: u32 = 0x466E;
+  pub const FILE_MIME_TYPE: u32 = 0x4660;
+  pub const FILE_DATA: u32 = 0x465C;
   pub const CHAPTERS: u32 = 0x1043_A770;
 }
 
@@ -257,6 +261,8 @@ struct Scan {
   block_keyframes: Vec<(u64, i64)>,
   stats: Vec<TrackStats>,
   truncated: bool,
+  /// `(file name, mime, data offset, data length)` of every attachment.
+  attachments: Vec<(String, String, usize, usize)>,
 }
 
 impl Scan {
@@ -274,6 +280,7 @@ impl Scan {
       block_keyframes: Vec::new(),
       stats: Vec::new(),
       truncated: false,
+      attachments: Vec::new(),
     }
   }
 
@@ -365,6 +372,26 @@ impl Scan {
     }
     // A cut Tracks element leaves entries behind; the header is not whole.
     self.tracks_seen = el.fits(limit);
+  }
+
+  fn attachments(&mut self, b: &[u8], el: &Element, limit: usize) {
+    for file in children(b, el, limit)
+      .iter()
+      .filter(|c| c.id == id::ATTACHED_FILE)
+    {
+      let (mut name, mut mime, mut data) = (String::new(), String::new(), None);
+      for c in children(b, file, limit) {
+        match c.id {
+          id::FILE_NAME => name = string(b, &c, limit).unwrap_or_default(),
+          id::FILE_MIME_TYPE => mime = string(b, &c, limit).unwrap_or_default(),
+          id::FILE_DATA => data = Some((c.data, c.end(limit) - c.data)),
+          _ => {}
+        }
+      }
+      if let Some((offset, len)) = data {
+        self.attachments.push((name, mime, offset, len));
+      }
+    }
   }
 
   fn cues(&mut self, b: &[u8], el: &Element, limit: usize) {
@@ -477,6 +504,7 @@ impl Scan {
         id::INFO => self.info(b, &child, end),
         id::TRACKS => self.tracks(b, &child, end),
         id::CUES => self.cues(b, &child, end),
+        id::ATTACHMENTS => self.attachments(b, &child, end),
         id::CLUSTER => {
           at = self.cluster(b, &child, end);
           continue;
@@ -568,6 +596,23 @@ pub fn parse(b: &[u8], kind: VideoKind) -> Result<VideoMeta, String> {
   m.title = scan.title.clone();
   m.writing_app = scan.writing_app.clone();
   m.track_count = scan.tracks.len() as u32;
+  // Cover art: the attachment named cover.*, else the first image attachment.
+  let images: Vec<_> = scan
+    .attachments
+    .iter()
+    .filter(|(name, mime, off, len)| {
+      mime.starts_with("image/")
+        || meta::image_mime(&b[*off..(*off + *len).min(b.len())]).is_some()
+        || name.to_ascii_lowercase().starts_with("cover")
+    })
+    .collect();
+  let pick = images
+    .iter()
+    .find(|(name, ..)| name.to_ascii_lowercase().starts_with("cover"))
+    .or_else(|| images.first());
+  if let Some((_, mime, offset, len)) = pick {
+    m.cover_art = meta::cover_art_at(b, *offset, *len, Some(mime.as_str()));
+  }
   let scale = scan.timecode_scale;
 
   let video_entry = scan

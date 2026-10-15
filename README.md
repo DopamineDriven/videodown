@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/DopamineDriven/videodown/workflows/CI/badge.svg)
 
-Rust-powered MP4 / MOV / WebM / MKV inspection for Node.js via [napi-rs](https://napi.rs). Reads container metadata from the headers (tracks, codecs, coded and display dimensions, rotation, frame rate, duration, bitrates, brands, creation time, progressive layout), builds the keyframe index from the container's own sync-sample table (`stss`, Matroska `Cues`, or a walk of the cluster block headers when a WebM has no `Cues`), and decodes the audio track with [Symphonia 0.6](https://github.com/pdeljanov/Symphonia) into the same exhaustive waveform envelope `@d0paminedriven/audiodown` produces, on a [rayon](https://github.com/rayon-rs/rayon) pool. It never decodes video, so the crate is pure Rust and ships for every target including `wasm32-wasip1-threads`.
+Rust-powered MP4 / MOV / WebM / MKV inspection for Node.js via [napi-rs](https://napi.rs). Reads container metadata from the headers (tracks, codecs, coded and display dimensions, rotation, frame rate, duration, bitrates, brands, creation time, progressive layout), builds the keyframe index from the container's own sync-sample table (`stss`, Matroska `Cues`, or a walk of the cluster block headers when a WebM has no `Cues`), surfaces the embedded poster when the container carries one (ISOBMFF `covr`, Matroska image attachments), and decodes the audio track with [Symphonia 0.6](https://github.com/pdeljanov/Symphonia) into the same exhaustive waveform envelope `@d0paminedriven/audiodown` produces, on a [rayon](https://github.com/rayon-rs/rayon) pool. It never decodes video, so the crate is pure Rust and ships for every target including `wasm32-wasip1-threads`.
 
 The output is shaped to drop straight into an `ImageSpecs` / `AudioSpecs`-style pipeline (`type`, `format`, `contentType`, `byteSize`, `fetchedBytes`, `source`, …) and a Prisma `VideoMetadata` row (`format`, `width`, `height`, `aspectRatio`, `duration` in ms, `frameRate`, `bitrate` in kbps, `codec`, `hasAudio`, `resolution`, `rotation`, `keyframeTimes`), with `Array.from(waveform.envelope)` feeding the same `waveformPeaks` column audiodown fills.
 
@@ -68,6 +68,9 @@ export declare class VideoService {
   keyframes(data: Uint8Array): KeyframeIndex
   keyframesAsync(data: Uint8Array): Promise<KeyframeIndex>
 
+  coverArt(data: Uint8Array): CoverArt | null
+  coverArtAsync(data: Uint8Array): Promise<CoverArt | null>
+
   decodeAudio(data: Uint8Array, options?: DecodeOptions): DecodedAudio | null
   decodeAudioAsync(data: Uint8Array, options?: DecodeOptions): Promise<DecodedAudio | null>
 
@@ -100,6 +103,8 @@ export declare class VideoDown {
   metadataAsync(): Promise<VideoSpecs>
   keyframes(): KeyframeIndex
   keyframesAsync(): Promise<KeyframeIndex>
+  coverArt(): CoverArt | null
+  coverArtAsync(): Promise<CoverArt | null>
   decodeAudio(options?: DecodeOptions): DecodedAudio | null
   decodeAudioAsync(options?: DecodeOptions): Promise<DecodedAudio | null>
   audioPeaks(options?: WaveformOptions): WaveformPeaks | null
@@ -129,7 +134,8 @@ The binding emits one flat, nullable interface, `VideoSpecsBase`. The typings na
 | `fragmented`, `boxes`, `moovBeforeMdat`                                                       | fMP4 flag, top-level box order, progressive layout (`null` for Matroska)              | remux decision                               |
 | `brands`                                                                                      | `{ major, minorVersion, compatible }` from `ftyp`                                     |                                              |
 | `creationTime`, `modificationTime`                                                            | ISO 8601 UTC from `mvhd` / `DateUTC`                                                  |                                              |
-| `title`, `writingApp`, `timescale`                                                            | Matroska title and muxer; `mvhd` ticks per second                                     |                                              |
+| `title`, `writingApp`, `timescale` | Matroska title / `©nam`; `WritingApp` / `©too`; `mvhd` ticks per second | |
+| `coverArt` | `{ mime, byteLength, width, height } \| null`: ISOBMFF `covr` under `moov/udta/meta/ilst`, or a Matroska image attachment | `Attachment.thumbnailKey` source |
 | `durationSec`, `durationMs`                                                                   | movie duration                                                                        | `VideoMetadata.duration` (ms)                |
 | `bitrate`, `bitrateKbps`                                                                      | whole-file average bps / floored kbps                                                 | `VideoMetadata.bitrate` (kbps)               |
 | `trackCount`, `videoTrackCount`, `audioTrackCount`                                            |                                                                                       |                                              |
@@ -160,9 +166,18 @@ interface KeyframeIndex {
 
 Times are presentation times: decode time from `stts`, plus the `ctts` composition offset, minus the edit list's media time, so they line up with what `ffprobe -show_packets` reports as `pts_time` for `K` packets. When a file has no `stss` every sample is a sync sample per ISOBMFF and `source` is `'all-samples'`. Matroska and WebM read `Cues` (`'cues'`); a file without them, which is what MediaRecorder and `ffmpeg -live 1` write, is indexed from the keyframe flag of every `SimpleBlock` and from `BlockGroup`s without a `ReferenceBlock` (`'blocks'`), the same walk that supplies the frame count, per-track bitrates and the duration those files also lack.
 
+### `CoverArt`
+
+```typescript
+interface CoverArtInfo { mime: string; byteLength: number; width: number | null; height: number | null }
+interface CoverArt extends CoverArtInfo { data: Uint8Array } // the bytes, ready to upload as the poster
+```
+
+`coverArt()` reads the poster some muxers embed: the iTunes-style `covr` atom (what `ffmpeg -disposition:v:1 attached_pic` writes, and what xAI's Grok Imagine Video output carries) or a Matroska attachment with an image mime (`ffmpeg -attach cover.jpg`). The mime comes from the magic bytes with the container's declaration as fallback; `width` / `height` are read from the JPEG, PNG, WebP, GIF or BMP header, so no image decoder is involved. For mp4 the atom sits inside `moov`, so a header-only prefix still yields it.
+
 ### `VideoAnalysis`, `WaveformPeaks`, `DecodedAudio`, options
 
-`VideoAnalysis` is `{ specs, keyframes, waveform, waveformStatus, waveformReason }`. `waveform` is `null` whenever `waveformStatus` is not `'ok'`; `waveformReason` carries the decoder's message for `'unsupported-codec'`.
+`VideoAnalysis` is `{ specs, keyframes, waveform, waveformStatus, waveformReason, coverArt }`; `coverArt` carries the bytes when the container has a poster. `waveform` is `null` whenever `waveformStatus` is not `'ok'`; `waveformReason` carries the decoder's message for `'unsupported-codec'`.
 
 `WaveformPeaks`, `DecodedAudio`, `WaveformOptions` and `DecodeOptions` are audiodown's shapes, field for field: `envelope` is `max(channel.peak[i])` across channels, `boundaries` has `peakCount + 1` frame offsets, every sample belongs to exactly one bucket, and serial and parallel reduction are bit-identical. See [audiodown](https://github.com/DopamineDriven/audiodown) for the reduction's guarantees.
 
@@ -171,7 +186,7 @@ Times are presentation times: decode time from `stts`, plus the `ctts` compositi
 ### Persist a generated clip (metadata, keyframes and waveform in one pass)
 
 ```typescript
-const { specs, keyframes, waveform, waveformStatus } = await video.analyzeVideoAsync(bytes, { peakCount: 1024 }, cdnUrl)
+const { specs, keyframes, waveform, waveformStatus, coverArt } = await video.analyzeVideoAsync(bytes, { peakCount: 1024 }, cdnUrl)
 
 await prisma.videoMetadata.create({
   data: {
@@ -193,6 +208,9 @@ await prisma.videoMetadata.create({
 if (waveformStatus === 'ok' && waveform) {
   const peaks = Array.from(waveform.envelope, (v) => Math.round(Math.min(1, v) * 100))
   // → the same 1024 × 0..100 column audiodown fills for generated tracks
+}
+if (coverArt) {
+  // the muxer's own poster: upload coverArt.data as-is and point thumbnailKey at it
 }
 ```
 
@@ -274,7 +292,7 @@ NAPI_RS_FORCE_WASI=error yarn test
 
 `NAPI_RS_FORCE_WASI=error` matters: with `=1` the loader silently falls back to a native `.node` sitting next to the wasm files, so the run would not prove anything. The generated WASI loader files (`videodown.wasi.cjs`, `videodown.wasi-browser.js`, `videodown.wasi.d.cts`, `wasi-worker*.mjs`) are tracked, as in audiodown; the `.wasm` binaries are not. The wasm target is built with `--cfg tokio_unstable` (see `.cargo/config.toml`); without it napi compiles the threadless async path and every `*Async` call rejects, and on wasm the async work runs inline on the tokio worker instead of through `spawn_blocking` (see the ADR).
 
-Fixtures are generated by `scripts/fixtures.py`: H.264 + AAC with `moov` first and last, HEVC, AV1, VP9 + Opus and VP9 + Vorbis WebM, an MKV, a `.mov`, a silent clip, a two-audio-track clip, two rotated clips whose `tkhd` matrices are stamped by hand (FFmpeg 4.x only writes a matrix from side data), and a live-muxed WebM (`-live 1`: unknown-size Segment and Clusters, no `Cues`, no `Duration`). `fixture-info.json` records the `ffprobe` truths the ava suite compares against, including the `pts_time` of every `K` packet.
+Fixtures are generated by `scripts/fixtures.py`: H.264 + AAC with `moov` first and last, HEVC, AV1, VP9 + Opus and VP9 + Vorbis WebM, an MKV, a `.mov`, a silent clip, a two-audio-track clip, two rotated clips whose `tkhd` matrices are stamped by hand (FFmpeg 4.x only writes a matrix from side data), an mp4 and an mkv carrying `cover.jpg` as embedded cover art, and a live-muxed WebM (`-live 1`: unknown-size Segment and Clusters, no `Cues`, no `Duration`). `fixture-info.json` records the `ffprobe` truths the ava suite compares against, including the `pts_time` of every `K` packet.
 
 ## License
 

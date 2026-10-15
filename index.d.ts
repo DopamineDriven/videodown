@@ -82,6 +82,8 @@ export declare class VideoDown {
   metadataAsync(): Promise<VideoSpecs>
   keyframes(): KeyframeIndex
   keyframesAsync(): Promise<KeyframeIndex>
+  coverArt(): CoverArt | null
+  coverArtAsync(): Promise<CoverArt | null>
   decodeAudio(options?: DecodeOptions | undefined | null): DecodedAudio | null
   decodeAudioAsync(options?: DecodeOptions | undefined | null): Promise<DecodedAudio | null>
   audioPeaks(options?: WaveformOptions | undefined | null): WaveformPeaks | null
@@ -103,6 +105,8 @@ export declare class VideoService {
   parseVideoAsync(data: Uint8Array, source?: string | undefined | null): Promise<VideoSpecs>
   keyframes(data: Uint8Array): KeyframeIndex
   keyframesAsync(data: Uint8Array): Promise<KeyframeIndex>
+  coverArt(data: Uint8Array): CoverArt | null
+  coverArtAsync(data: Uint8Array): Promise<CoverArt | null>
   decodeAudio(data: Uint8Array, options?: DecodeOptions | undefined | null): DecodedAudio | null
   decodeAudioAsync(data: Uint8Array, options?: DecodeOptions | undefined | null): Promise<DecodedAudio | null>
   audioPeaks(data: Uint8Array, options?: WaveformOptions | undefined | null): WaveformPeaks | null
@@ -146,6 +150,35 @@ export interface AudioTrack {
   sampleCount: number | null
   bitrate: number | null
   language: string | null
+}
+
+/**
+ * The embedded poster (ISOBMFF `covr`, or a Matroska image attachment) with
+ * its bytes; `null` when the container carries none. Header-only, no decoder.
+ */
+export declare function coverArt(data: Uint8Array): CoverArt | null
+
+/** `CoverArtInfo` plus the bytes, ready to upload as the poster. */
+export interface CoverArt {
+  mime: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' | 'image/bmp' | string
+  byteLength: number
+  width: number | null
+  height: number | null
+  data: Uint8Array
+}
+
+export declare function coverArtAsync(data: Uint8Array): Promise<CoverArt | null>
+
+/**
+ * An image carried beside the tracks (ISOBMFF `covr`, or a Matroska image
+ * attachment), described without copying it.
+ */
+export interface CoverArtInfo {
+  mime: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' | 'image/bmp' | string
+  byteLength: number
+  /** From the image header (JPEG SOF, PNG IHDR, WebP, GIF, BMP); `null` when unreadable. */
+  width: number | null
+  height: number | null
 }
 
 /**
@@ -223,6 +256,8 @@ export interface VideoAnalysis {
   waveformStatus: WaveformStatus
   /** The decoder's reason when `waveformStatus` is `unsupported-codec`. */
   waveformReason: string | null
+  /** The embedded poster with its bytes, when the container carries one. */
+  coverArt: CoverArt | null
 }
 
 export interface VideoBrands {
@@ -284,6 +319,11 @@ export interface VideoSpecsBase {
   modificationTime: string | null
   title: string | null
   writingApp: string | null
+  /**
+   * Embedded poster (ISOBMFF `covr` under `moov/udta/meta/ilst`, or a Matroska image attachment); the
+   * bytes come from `coverArt()` / `analyzeVideo().coverArt`.
+   */
+  coverArt: CoverArtInfo | null
   /** Movie timescale in ticks per second (`mvhd`); `null` for Matroska. */
   timescale: number | null
   durationSec: number | null

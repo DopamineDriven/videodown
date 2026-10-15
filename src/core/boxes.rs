@@ -166,6 +166,7 @@ pub struct Layout {
   pub truncated: bool,
   pub mvhd: Option<Mvhd>,
   pub traks: Vec<Trak>,
+  pub ilst: Ilst,
 }
 
 fn read_ftyp(b: &[u8], head: &Head, limit: usize) -> Option<Ftyp> {
@@ -248,6 +249,82 @@ fn read_trak(b: &[u8], head: &Head, limit: usize) -> Trak {
   trak
 }
 
+/// iTunes-style metadata under `moov/udta/meta/ilst`: the cover art and
+/// the two text items a video pipeline cares about.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Ilst {
+  /// `covr` payload: offset, length and the `data` atom's type code
+  /// (13 JPEG, 14 PNG, 27 BMP, 0 implicit).
+  pub cover: Option<(usize, usize, u32)>,
+  /// `©too`, the muxing tool.
+  pub encoder: Option<String>,
+  /// `©nam`.
+  pub title: Option<String>,
+}
+
+/// The payload of an item's first `data` atom: its type code and byte range.
+fn ilst_data(b: &[u8], item: &Head, limit: usize) -> Option<(u32, usize, usize)> {
+  let data = find(b, item.body, item.body_end(limit), b"data")?;
+  // 4 bytes of type indicator (1 version + 3 well-known type), 4 of locale.
+  let kind = be_u32(b, data.body)? & 0x00ff_ffff;
+  let payload = data.body + 8;
+  let end = data.body_end(limit);
+  (payload <= end).then_some((kind, payload, end - payload))
+}
+
+fn ilst_text(b: &[u8], item: &Head, limit: usize) -> Option<String> {
+  let (kind, at, len) = ilst_data(b, item, limit)?;
+  if kind != 1 && kind != 0 {
+    return None;
+  }
+  let text = String::from_utf8_lossy(b.get(at..at + len)?)
+    .trim_end_matches('\0')
+    .to_owned();
+  (!text.is_empty()).then_some(text)
+}
+
+fn read_ilst(b: &[u8], moov: &Head, limit: usize) -> Ilst {
+  let mut out = Ilst::default();
+  let end = moov.body_end(limit);
+  let Some(udta) = find(b, moov.body, end, b"udta") else {
+    return out;
+  };
+  let Some(meta) = find(b, udta.body, udta.body_end(limit), b"meta") else {
+    return out;
+  };
+  // ISOBMFF `meta` is a full box (4 bytes of version/flags); QuickTime
+  // writes it as a plain box. Look for a child header at both offsets.
+  let meta_end = meta.body_end(limit);
+  let start = if read_head(b, meta.body + 4, meta_end)
+    .is_some_and(|h| matches!(&h.kind, b"hdlr" | b"ilst" | b"keys"))
+  {
+    meta.body + 4
+  } else {
+    meta.body
+  };
+  let Some(ilst) = find(b, start, meta_end, b"ilst") else {
+    return out;
+  };
+  for item in children(b, ilst.body, ilst.body_end(limit)) {
+    if !item.fits(limit) {
+      break;
+    }
+    match &item.kind {
+      b"covr" => {
+        if let Some((kind, at, len)) = ilst_data(b, &item, limit)
+          && len > 0
+        {
+          out.cover = Some((at, len, kind));
+        }
+      }
+      [0xA9, b't', b'o', b'o'] => out.encoder = ilst_text(b, &item, limit),
+      [0xA9, b'n', b'a', b'm'] => out.title = ilst_text(b, &item, limit),
+      _ => {}
+    }
+  }
+  out
+}
+
 fn read_moov(b: &[u8], head: &Head, limit: usize, layout: &mut Layout) {
   let end = head.body_end(limit);
   for child in children(b, head.body, end) {
@@ -261,6 +338,7 @@ fn read_moov(b: &[u8], head: &Head, limit: usize, layout: &mut Layout) {
       _ => {}
     }
   }
+  layout.ilst = read_ilst(b, head, limit);
 }
 
 pub fn layout(b: &[u8]) -> Layout {

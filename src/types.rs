@@ -203,6 +203,52 @@ impl From<AudioTrackMeta> for AudioTrack {
   }
 }
 
+/// An image carried beside the tracks (ISOBMFF `covr`, or a Matroska image
+/// attachment), described without copying it.
+#[napi(object, object_from_js = false)]
+pub struct CoverArtInfo {
+  #[napi(
+    ts_type = "'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' | 'image/bmp' | string"
+  )]
+  pub mime: String,
+  pub byte_length: u32,
+  /// From the image header (JPEG SOF, PNG IHDR, WebP, GIF, BMP); `null` when unreadable.
+  pub width: Either<u32, Null>,
+  pub height: Either<u32, Null>,
+}
+
+/// `CoverArtInfo` plus the bytes, ready to upload as the poster.
+#[napi(object, object_from_js = false)]
+pub struct CoverArt {
+  #[napi(
+    ts_type = "'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' | 'image/bmp' | string"
+  )]
+  pub mime: String,
+  pub byte_length: u32,
+  pub width: Either<u32, Null>,
+  pub height: Either<u32, Null>,
+  pub data: Uint8Array,
+}
+
+pub fn cover_art_info(c: &meta::CoverArt) -> CoverArtInfo {
+  CoverArtInfo {
+    mime: c.mime.clone(),
+    byte_length: u32::try_from(c.len).unwrap_or(u32::MAX),
+    width: nullable(c.width),
+    height: nullable(c.height),
+  }
+}
+
+pub fn cover_art(c: &meta::CoverArt, bytes: Vec<u8>) -> CoverArt {
+  CoverArt {
+    mime: c.mime.clone(),
+    byte_length: u32::try_from(bytes.len()).unwrap_or(u32::MAX),
+    width: nullable(c.width),
+    height: nullable(c.height),
+    data: Uint8Array::new(bytes),
+  }
+}
+
 /// Flat, nullable video specs shaped like audiodown's `AudioSpecs`, with the
 /// Prisma `VideoMetadata` columns folded in so one object feeds the asset
 /// pipeline, the extractor and the spec sheet.
@@ -254,6 +300,9 @@ pub struct VideoSpecs {
   pub modification_time: Either<String, Null>,
   pub title: Either<String, Null>,
   pub writing_app: Either<String, Null>,
+  /// Embedded poster (ISOBMFF `covr` under `moov/udta/meta/ilst`, or a Matroska image attachment); the
+  /// bytes come from `coverArt()` / `analyzeVideo().coverArt`.
+  pub cover_art: Either<CoverArtInfo, Null>,
   /// Movie timescale in ticks per second (`mvhd`); `null` for Matroska.
   pub timescale: Either<u32, Null>,
 
@@ -344,6 +393,7 @@ pub fn video_specs(m: VideoMeta, byte_size: usize, source: Option<String>) -> Vi
     modification_time: nullable(m.modification_time.clone()),
     title: nullable(m.title.clone()),
     writing_app: nullable(m.writing_app.clone()),
+    cover_art: nullable(m.cover_art.as_ref().map(cover_art_info)),
     timescale: nullable(m.timescale),
     duration_sec: nullable(m.duration_sec),
     duration_ms: nullable(m.duration_sec.map(|s| (s * 1000.0).round())),
@@ -610,11 +660,14 @@ pub struct VideoAnalysis {
   pub waveform_status: WaveformStatus,
   /// The decoder's reason when `waveformStatus` is `unsupported-codec`.
   pub waveform_reason: Either<String, Null>,
+  /// The embedded poster with its bytes, when the container carries one.
+  pub cover_art: Either<CoverArt, Null>,
 }
 
 pub fn video_analysis(
   m: VideoMeta,
   outcome: WaveformOutcome,
+  cover: Option<Vec<u8>>,
   byte_size: usize,
   source: Option<String>,
 ) -> VideoAnalysis {
@@ -634,11 +687,16 @@ pub fn video_analysis(
     ),
     WaveformOutcome::Truncated => (Either::B(Null), WaveformStatus::Truncated, Either::B(Null)),
   };
+  let cover_art = nullable(match (m.cover_art.as_ref(), cover) {
+    (Some(c), Some(bytes)) => Some(cover_art(c, bytes)),
+    _ => None,
+  });
   VideoAnalysis {
     specs: video_specs(m, byte_size, source),
     keyframes,
     waveform,
     waveform_status,
     waveform_reason,
+    cover_art,
   }
 }

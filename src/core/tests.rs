@@ -53,6 +53,8 @@ fn sniff_classifies_every_fixture() {
     ("vp9-opus.webm", VideoKind::Webm),
     ("vp9-vorbis.webm", VideoKind::Webm),
     ("vp9-opus-live.webm", VideoKind::Webm),
+    ("h264-aac-cover.mp4", VideoKind::Mp4),
+    ("h264-aac-cover.mkv", VideoKind::Mkv),
   ];
   for (name, kind) in cases {
     assert_eq!(sniff::sniff(&fixture(name)), Some(kind), "{name}");
@@ -455,6 +457,93 @@ fn webm_prefix_keeps_the_header_and_marks_the_index_partial() {
   assert_eq!(cut.declared_size, None);
   assert!(!cut.keyframes.complete);
   assert!(cut.keyframes.times_sec.len() < 4);
+}
+
+// ── Cover art ───────────────────────────────────────────────────
+
+#[test]
+fn mp4_covr_atom_is_the_poster() {
+  let data = fixture("h264-aac-cover.mp4");
+  let m = meta::parse_video(&data).unwrap();
+  let cover = m.cover_art.as_ref().expect("covr");
+  assert_eq!(cover.mime, "image/jpeg");
+  assert_eq!((cover.width, cover.height), (Some(320), Some(180)));
+  assert_eq!(cover.bytes(&data).unwrap(), fixture("cover.jpg").as_slice());
+  // ilst text items ride along: ©nam and ©too.
+  assert_eq!(m.title.as_deref(), Some("Cover fixture"));
+  assert!(
+    m.writing_app
+      .as_deref()
+      .is_some_and(|w| w.starts_with("Lavf"))
+  );
+  // The cover lives inside moov, so a header-only prefix still has it.
+  let (_, moov_end) = boxes::layout(&data).moov.unwrap();
+  let prefix = meta::parse_video(&data[..moov_end + 16]).unwrap();
+  assert!(prefix.complete && prefix.truncated);
+  assert_eq!(prefix.cover_art, m.cover_art);
+  // Tracks are unaffected by the extra atom.
+  assert_eq!(
+    (m.track_count, m.video_track_count, m.audio.len()),
+    (2, 1, 1)
+  );
+  assert_eq!(m.keyframes.times_sec.len(), 4);
+  // Plain files report none.
+  for name in [
+    "h264-aac-faststart.mp4",
+    "hevc-aac.mp4",
+    "h264-aac.mov",
+    "silent.mp4",
+  ] {
+    let plain = parse(name);
+    assert!(plain.cover_art.is_none(), "{name}");
+    assert!(plain.title.is_none(), "{name}");
+  }
+}
+
+#[test]
+fn matroska_image_attachment_is_the_poster() {
+  let data = fixture("h264-aac-cover.mkv");
+  let m = meta::parse_video(&data).unwrap();
+  let cover = m.cover_art.as_ref().expect("attachment");
+  assert_eq!(cover.mime, "image/jpeg");
+  assert_eq!((cover.width, cover.height), (Some(320), Some(180)));
+  assert_eq!(cover.bytes(&data).unwrap(), fixture("cover.jpg").as_slice());
+  assert_eq!((m.track_count, m.audio.len()), (2, 1));
+  assert_eq!(m.keyframes.source, KeyframeSource::Cues);
+  assert!(parse("h264-aac.mkv").cover_art.is_none());
+  assert!(parse("vp9-vorbis.webm").cover_art.is_none());
+}
+
+#[test]
+fn image_headers_yield_mime_and_dimensions() {
+  let jpeg = fixture("cover.jpg");
+  assert_eq!(meta::image_mime(&jpeg), Some("image/jpeg"));
+  assert_eq!(meta::image_dims(&jpeg), Some((320, 180)));
+  let mut png = vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13];
+  png.extend_from_slice(b"IHDR");
+  png.extend_from_slice(&1920u32.to_be_bytes());
+  png.extend_from_slice(&1080u32.to_be_bytes());
+  assert_eq!(meta::image_mime(&png), Some("image/png"));
+  assert_eq!(meta::image_dims(&png), Some((1920, 1080)));
+  let mut gif = b"GIF89a".to_vec();
+  gif.extend_from_slice(&640u16.to_le_bytes());
+  gif.extend_from_slice(&480u16.to_le_bytes());
+  assert_eq!(meta::image_dims(&gif), Some((640, 480)));
+  let mut webp = b"RIFF\0\0\0\0WEBPVP8X".to_vec();
+  webp.extend_from_slice(&[0; 8]);
+  webp.extend_from_slice(&[0x3F, 0x05, 0x00, 0x1F, 0x03, 0x00]); // 1343×799 (minus-one encoded)
+  assert_eq!(meta::image_mime(&webp), Some("image/webp"));
+  assert_eq!(meta::image_dims(&webp), Some((1344, 800)));
+  assert_eq!(meta::image_mime(b"not an image"), None);
+  assert_eq!(meta::image_dims(&[0xFF, 0xD8, 0xFF]), None);
+  // A declared mime fills in when the magic is unknown; junk without one is not a cover.
+  let junk = [0u8; 16];
+  assert!(meta::cover_art_at(&junk, 0, 16, None).is_none());
+  assert_eq!(
+    meta::cover_art_at(&junk, 0, 16, Some("image/x-unknown")).map(|c| c.mime),
+    Some("image/x-unknown".to_owned())
+  );
+  assert!(meta::cover_art_at(&junk, 0, 16, Some("text/plain")).is_none());
 }
 
 // ── Audio track decode + peaks ──────────────────────────────────

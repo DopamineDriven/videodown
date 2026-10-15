@@ -90,6 +90,139 @@ pub struct AudioTrackMeta {
   pub language: Option<String>,
 }
 
+/// An image the container carries beside the tracks: ISOBMFF `covr`, or a
+/// Matroska attachment with an image mime. A byte range into the parsed
+/// buffer; nothing is copied until a caller asks for the bytes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CoverArt {
+  pub mime: String,
+  pub offset: usize,
+  pub len: usize,
+  pub width: Option<u32>,
+  pub height: Option<u32>,
+}
+
+impl CoverArt {
+  pub fn bytes<'a>(&self, b: &'a [u8]) -> Option<&'a [u8]> {
+    b.get(self.offset..self.offset.checked_add(self.len)?)
+  }
+}
+
+/// Image mime from the magic bytes.
+pub fn image_mime(b: &[u8]) -> Option<&'static str> {
+  if b.starts_with(&[0xFF, 0xD8, 0xFF]) {
+    Some("image/jpeg")
+  } else if b.starts_with(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]) {
+    Some("image/png")
+  } else if b.len() >= 12 && &b[..4] == b"RIFF" && &b[8..12] == b"WEBP" {
+    Some("image/webp")
+  } else if b.starts_with(b"GIF8") {
+    Some("image/gif")
+  } else if b.starts_with(b"BM") {
+    Some("image/bmp")
+  } else {
+    None
+  }
+}
+
+fn be_u16_at(b: &[u8], at: usize) -> Option<u32> {
+  b.get(at..at + 2)
+    .map(|s| u32::from(u16::from_be_bytes([s[0], s[1]])))
+}
+
+fn le_u16_at(b: &[u8], at: usize) -> Option<u32> {
+  b.get(at..at + 2)
+    .map(|s| u32::from(u16::from_le_bytes([s[0], s[1]])))
+}
+
+fn le_u32_at(b: &[u8], at: usize) -> Option<u32> {
+  b.get(at..at + 4)
+    .map(|s| u32::from_le_bytes([s[0], s[1], s[2], s[3]]))
+}
+
+/// Pixel dimensions from the image header alone: JPEG SOF, PNG IHDR, WebP
+/// VP8/VP8L/VP8X, GIF and BMP. No decoding.
+pub fn image_dims(b: &[u8]) -> Option<(u32, u32)> {
+  match image_mime(b)? {
+    "image/png" => {
+      let w = u32::from_be_bytes([*b.get(16)?, *b.get(17)?, *b.get(18)?, *b.get(19)?]);
+      let h = u32::from_be_bytes([*b.get(20)?, *b.get(21)?, *b.get(22)?, *b.get(23)?]);
+      Some((w, h))
+    }
+    "image/jpeg" => {
+      let mut at = 2;
+      loop {
+        if *b.get(at)? != 0xFF {
+          return None;
+        }
+        let marker = *b.get(at + 1)?;
+        match marker {
+          0xFF => {
+            at += 1;
+          }
+          0xD8 | 0x01 | 0xD0..=0xD7 => {
+            at += 2;
+          }
+          0xC0..=0xCF if marker != 0xC4 && marker != 0xC8 && marker != 0xCC => {
+            return Some((be_u16_at(b, at + 7)?, be_u16_at(b, at + 5)?));
+          }
+          0xD9 | 0xDA => return None,
+          _ => {
+            at += 2 + usize::try_from(be_u16_at(b, at + 2)?).ok()?;
+          }
+        }
+      }
+    }
+    "image/webp" => match b.get(12..16)? {
+      b"VP8 " => Some((le_u16_at(b, 26)? & 0x3fff, le_u16_at(b, 28)? & 0x3fff)),
+      b"VP8L" => {
+        let bits = le_u32_at(b, 21)?;
+        Some(((bits & 0x3fff) + 1, ((bits >> 14) & 0x3fff) + 1))
+      }
+      b"VP8X" => {
+        let w = u32::from(*b.get(24)?) | u32::from(*b.get(25)?) << 8 | u32::from(*b.get(26)?) << 16;
+        let h = u32::from(*b.get(27)?) | u32::from(*b.get(28)?) << 8 | u32::from(*b.get(29)?) << 16;
+        Some((w + 1, h + 1))
+      }
+      _ => None,
+    },
+    "image/gif" => Some((le_u16_at(b, 6)?, le_u16_at(b, 8)?)),
+    "image/bmp" => {
+      let w = le_u32_at(b, 18)? as i32;
+      let h = le_u32_at(b, 22)? as i32;
+      Some((w.unsigned_abs(), h.unsigned_abs()))
+    }
+    _ => None,
+  }
+}
+
+/// Builds the cover record for `b[offset..offset + len]`, sniffing the mime
+/// and falling back to what the container declared.
+pub fn cover_art_at(
+  b: &[u8],
+  offset: usize,
+  len: usize,
+  declared: Option<&str>,
+) -> Option<CoverArt> {
+  let payload = b.get(offset..offset.checked_add(len)?)?;
+  if payload.is_empty() {
+    return None;
+  }
+  let mime = image_mime(payload).map(str::to_owned).or_else(|| {
+    declared
+      .filter(|m| m.starts_with("image/"))
+      .map(str::to_owned)
+  })?;
+  let dims = image_dims(payload);
+  Some(CoverArt {
+    mime,
+    offset,
+    len,
+    width: dims.map(|d| d.0),
+    height: dims.map(|d| d.1),
+  })
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct VideoMeta {
   pub kind: VideoKind,
@@ -118,6 +251,8 @@ pub struct VideoMeta {
   /// Muxing application, when the container records one (Matroska `WritingApp`).
   pub writing_app: Option<String>,
   pub title: Option<String>,
+  /// Embedded poster: ISOBMFF `covr`, or a Matroska image attachment.
+  pub cover_art: Option<CoverArt>,
 }
 
 impl VideoMeta {
@@ -142,6 +277,7 @@ impl VideoMeta {
       keyframes: Keyframes::default(),
       writing_app: None,
       title: None,
+      cover_art: None,
     }
   }
 

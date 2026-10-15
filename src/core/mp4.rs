@@ -379,6 +379,17 @@ pub fn parse(b: &[u8], kind: VideoKind) -> Result<VideoMeta, String> {
     .map_err(|e| format!("moov present but unparseable: {e}"))?;
   m.complete = true;
   m.fragmented = m.fragmented || context.mvex.is_some();
+  m.title = layout.ilst.title.clone();
+  m.writing_app = layout.ilst.encoder.clone();
+  if let Some((offset, len, kind)) = layout.ilst.cover {
+    let declared = match kind {
+      13 => Some("image/jpeg"),
+      14 => Some("image/png"),
+      27 => Some("image/bmp"),
+      _ => None,
+    };
+    m.cover_art = meta::cover_art_at(b, offset, len, declared);
+  }
   if m.duration_sec.is_none()
     && let Some(mvex) = &context.mvex
     && let (Some(fragment), Some(ts)) = (mvex.fragment_duration, m.timescale)

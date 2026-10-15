@@ -6,6 +6,9 @@
     "bitRate": 303414,
     "creationTime": "2026-10-14T12:00:00.000000Z",
     "streams": 2,
+    "attachedPics": 0,
+    "attachments": 0,
+    "title": null,
     "video": {
       "codec": "av1",
       "codecTag": "av01",
@@ -38,6 +41,90 @@
     ],
     "videoPackets": 120
   },
+  "h264-aac-cover.mkv": {
+    "formatName": "matroska,webm",
+    "size": 196845,
+    "duration": 4.021,
+    "bitRate": 391633,
+    "creationTime": null,
+    "streams": 3,
+    "attachedPics": 1,
+    "attachments": 0,
+    "title": null,
+    "video": {
+      "codec": "h264",
+      "codecTag": "[0][0][0][0]",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": null,
+      "duration": null,
+      "bitRate": null,
+      "rotate": null,
+      "sideData": null,
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [
+      {
+        "codec": "aac",
+        "codecTag": "[0][0][0][0]",
+        "channels": 2,
+        "sampleRate": 48000,
+        "duration": null,
+        "bitRate": null
+      }
+    ],
+    "keyframes": [
+      0.0,
+      1.021,
+      2.021,
+      3.021
+    ],
+    "videoPackets": 120
+  },
+  "h264-aac-cover.mp4": {
+    "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
+    "size": 199379,
+    "duration": 4.0,
+    "bitRate": 398758,
+    "creationTime": null,
+    "streams": 3,
+    "attachedPics": 1,
+    "attachments": 0,
+    "title": "Cover fixture",
+    "video": {
+      "codec": "h264",
+      "codecTag": "avc1",
+      "width": 320,
+      "height": 180,
+      "rFrameRate": "30/1",
+      "avgFrameRate": "30/1",
+      "nbFrames": 120,
+      "duration": 4.0,
+      "bitRate": 278236,
+      "rotate": null,
+      "sideData": null,
+      "displayAspectRatio": "16:9"
+    },
+    "audio": [
+      {
+        "codec": "aac",
+        "codecTag": "mp4a",
+        "channels": 2,
+        "sampleRate": 48000,
+        "duration": 4.0,
+        "bitRate": 93254
+      }
+    ],
+    "keyframes": [
+      0.0,
+      1.0,
+      2.0,
+      3.0
+    ],
+    "videoPackets": 120
+  },
   "h264-aac-faststart.mp4": {
     "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
     "size": 191556,
@@ -45,6 +132,9 @@
     "bitRate": 383112,
     "creationTime": "2026-10-14T12:00:00.000000Z",
     "streams": 2,
+    "attachedPics": 0,
+    "attachments": 0,
+    "title": null,
     "video": {
       "codec": "h264",
       "codecTag": "avc1",
@@ -84,6 +174,9 @@
     "bitRate": 383112,
     "creationTime": "2026-10-14T12:00:00.000000Z",
     "streams": 2,
+    "attachedPics": 0,
+    "attachments": 0,
+    "title": null,
     "video": {
       "codec": "h264",
       "codecTag": "avc1",
@@ -123,6 +216,9 @@
     "bitRate": 375693,
     "creationTime": null,
     "streams": 2,
+    "attachedPics": 0,
+    "attachments": 0,
+    "title": null,
     "video": {
       "codec": "h264",
       "codecTag": "[0][0][0][0]",
@@ -162,6 +258,9 @@
     "bitRate": 383214,
     "creationTime": null,
     "streams": 2,
+    "attachedPics": 0,
+    "attachments": 0,
+    "title": null,
     "video": {
       "codec": "h264",
       "codecTag": "avc1",
@@ -201,6 +300,9 @@
     "bitRate": 362322,
     "creationTime": "2026-10-14T12:00:00.000000Z",
     "streams": 2,
+    "attachedPics": 0,
+    "attachments": 0,
+    "title": null,
     "video": {
       "codec": "hevc",
       "codecTag": "hvc1",
@@ -240,6 +342,9 @@
     "bitRate": 383112,
     "creationTime": null,
     "streams": 2,
+    "attachedPics": 0,
+    "attachments": 0,
+    "title": null,
     "video": {
       "codec": "h264",
       "codecTag": "avc1",
@@ -285,6 +390,9 @@
     "bitRate": 383112,
     "creationTime": null,
     "streams": 2,
+    "attachedPics": 0,
+    "attachments": 0,
+    "title": null,
     "video": {
       "codec": "h264",
       "codecTag": "avc1",
@@ -330,6 +438,9 @@
     "bitRate": 282824,
     "creationTime": null,
     "streams": 1,
+    "attachedPics": 0,
+    "attachments": 0,
+    "title": null,
     "video": {
       "codec": "h264",
       "codecTag": "avc1",
@@ -360,6 +471,9 @@
     "bitRate": 433304,
     "creationTime": null,
     "streams": 3,
+    "attachedPics": 0,
+    "attachments": 0,
+    "title": null,
     "video": {
       "codec": "h264",
       "codecTag": "avc1",
@@ -407,6 +521,9 @@
     "bitRate": null,
     "creationTime": null,
     "streams": 2,
+    "attachedPics": 0,
+    "attachments": 0,
+    "title": null,
     "video": {
       "codec": "vp9",
       "codecTag": "[0][0][0][0]",
@@ -446,6 +563,9 @@
     "bitRate": 578431,
     "creationTime": null,
     "streams": 2,
+    "attachedPics": 0,
+    "attachments": 0,
+    "title": null,
     "video": {
       "codec": "vp9",
       "codecTag": "[0][0][0][0]",
@@ -485,6 +605,9 @@
     "bitRate": 536265,
     "creationTime": null,
     "streams": 2,
+    "attachedPics": 0,
+    "attachments": 0,
+    "title": null,
     "video": {
       "codec": "vp9",
       "codecTag": "[0][0][0][0]",

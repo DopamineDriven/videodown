@@ -73,6 +73,14 @@ rotate_tkhd(out / 'rotated-90.mp4', out / 'rotated-90.mp4', 90)
 ffmpeg(*VIDEO, *H264, '-an', *FASTSTART, out / 'silent.mp4')
 ffmpeg(*VIDEO, *AUDIO, *AUDIO2, '-map', '0:v', '-map', '1:a', '-map', '2:a', *H264, *AAC, *FASTSTART, out / 'two-audio.mp4')
 
+# Embedded cover art: a `covr` atom in mp4 (ffmpeg writes it from an attached_pic
+# stream) and an image attachment in mkv (what ffmpeg -attach produces).
+ffmpeg('-f', 'lavfi', '-i', 'testsrc2=size=320x180:rate=1:duration=1', '-frames:v', '1', '-q:v', '4', out / 'cover.jpg')
+ffmpeg('-i', out / 'h264-aac-faststart.mp4', '-i', out / 'cover.jpg', '-map', '0', '-map', '1', '-c', 'copy',
+       '-disposition:v:1', 'attached_pic', '-metadata', 'title=Cover fixture', *FASTSTART, out / 'h264-aac-cover.mp4')
+ffmpeg('-i', out / 'h264-aac-faststart.mp4', '-attach', out / 'cover.jpg', '-metadata:s:t:0', 'mimetype=image/jpeg',
+       '-metadata:s:t:0', 'filename=cover.jpg', '-c', 'copy', out / 'h264-aac-cover.mkv')
+
 # Independent PCM references for the decoder comparison.
 for name in ['h264-aac-faststart.mp4', 'vp9-vorbis.webm']:
     ffmpeg('-i', out / name, '-vn', '-f', 'f32le', '-c:a', 'pcm_f32le', out / (name + '.reference.f32'))
@@ -109,6 +117,9 @@ def probe(path):
         'bitRate': number(fmt.get('bit_rate'), int),
         'creationTime': (fmt.get('tags') or {}).get('creation_time'),
         'streams': len(data['streams']),
+        'attachedPics': sum(1 for s in data['streams'] if (s.get('disposition') or {}).get('attached_pic') == 1),
+        'attachments': sum(1 for s in data['streams'] if s['codec_type'] == 'attachment'),
+        'title': (fmt.get('tags') or {}).get('title'),
         'video': video and {
             'codec': video['codec_name'],
             'codecTag': video.get('codec_tag_string'),

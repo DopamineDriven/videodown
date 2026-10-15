@@ -25,9 +25,9 @@ mod core;
 mod types;
 
 pub use types::{
-  AudioTrack, DecodeOptions, DecodedAudio, KeyframeIndex, KeyframeSource, Orientation,
-  VideoAnalysis, VideoBrands, VideoContainer, VideoKind, VideoSpecs, VideoTrack, WaveformChannel,
-  WaveformOptions, WaveformPeaks, WaveformStatus,
+  AudioTrack, CoverArt, CoverArtInfo, DecodeOptions, DecodedAudio, KeyframeIndex, KeyframeSource,
+  Orientation, VideoAnalysis, VideoBrands, VideoContainer, VideoKind, VideoSpecs, VideoTrack,
+  WaveformChannel, WaveformOptions, WaveformPeaks, WaveformStatus,
 };
 
 use crate::core::WaveformOutcome;
@@ -225,6 +225,31 @@ fn peaks_async(
   )
 }
 
+/// The embedded poster's bytes, copied out of the buffer.
+fn cover_bytes(m: &VideoMeta, data: &[u8]) -> Option<Vec<u8>> {
+  m.cover_art
+    .as_ref()
+    .and_then(|c| c.bytes(data))
+    .map(<[u8]>::to_vec)
+}
+
+fn cover(data: &[u8]) -> Result<Option<(meta::CoverArt, Vec<u8>)>> {
+  let m = parse_meta(data)?;
+  Ok(
+    cover_bytes(&m, data)
+      .zip(m.cover_art)
+      .map(|(bytes, c)| (c, bytes)),
+  )
+}
+
+fn cover_async(env: &Env, data: Arc<Vec<u8>>) -> Result<AsyncBlock<Either<CoverArt, Null>>> {
+  promise(
+    env,
+    move || cover(&data),
+    |_, found| Ok(or_null(found.map(|(c, bytes)| types::cover_art(&c, bytes)))),
+  )
+}
+
 fn analysis(
   data: Arc<Vec<u8>>,
   dc: DecodeConfig,
@@ -232,8 +257,9 @@ fn analysis(
   source: Option<String>,
 ) -> Result<VideoAnalysis> {
   let len = data.len();
-  let (m, outcome) = core::analyze(data, dc, wc).map_err(fail)?;
-  Ok(types::video_analysis(m, outcome, len, source))
+  let (m, outcome) = core::analyze(Arc::clone(&data), dc, wc).map_err(fail)?;
+  let cover = cover_bytes(&m, &data);
+  Ok(types::video_analysis(m, outcome, cover, len, source))
 }
 
 fn analysis_async(
@@ -246,8 +272,12 @@ fn analysis_async(
   let len = data.len();
   promise(
     env,
-    move || core::analyze(data, dc, wc).map_err(fail),
-    move |_, (m, outcome)| Ok(types::video_analysis(m, outcome, len, source)),
+    move || {
+      let (m, outcome) = core::analyze(Arc::clone(&data), dc, wc).map_err(fail)?;
+      let cover = cover_bytes(&m, &data);
+      Ok((m, outcome, cover))
+    },
+    move |_, (m, outcome, cover)| Ok(types::video_analysis(m, outcome, cover, len, source)),
   )
 }
 
@@ -284,6 +314,20 @@ pub fn keyframes(data: &[u8]) -> Result<KeyframeIndex> {
 #[napi]
 pub fn keyframes_async(env: &Env, data: &[u8]) -> Result<AsyncBlock<KeyframeIndex>> {
   index_async(env, snapshot(data))
+}
+
+/// The embedded poster (ISOBMFF `covr`, or a Matroska image attachment) with
+/// its bytes; `null` when the container carries none. Header-only, no decoder.
+#[napi]
+pub fn cover_art(data: &[u8]) -> Result<Either<CoverArt, Null>> {
+  Ok(or_null(
+    cover(data)?.map(|(c, bytes)| types::cover_art(&c, bytes)),
+  ))
+}
+
+#[napi]
+pub fn cover_art_async(env: &Env, data: &[u8]) -> Result<AsyncBlock<Either<CoverArt, Null>>> {
+  cover_async(env, snapshot(data))
 }
 
 /// The default audio track as interleaved `f32` PCM; `null` when the
@@ -407,6 +451,20 @@ impl VideoService {
   #[napi]
   pub fn keyframes_async(&self, env: &Env, data: &[u8]) -> Result<AsyncBlock<KeyframeIndex>> {
     keyframes_async(env, data)
+  }
+
+  #[napi]
+  pub fn cover_art(&self, data: &[u8]) -> Result<Either<CoverArt, Null>> {
+    cover_art(data)
+  }
+
+  #[napi]
+  pub fn cover_art_async(
+    &self,
+    env: &Env,
+    data: &[u8],
+  ) -> Result<AsyncBlock<Either<CoverArt, Null>>> {
+    cover_art_async(env, data)
   }
 
   #[napi]
@@ -544,6 +602,16 @@ impl VideoDown {
   #[napi]
   pub fn keyframes_async(&self, env: &Env) -> Result<AsyncBlock<KeyframeIndex>> {
     index_async(env, Arc::clone(&self.data))
+  }
+
+  #[napi]
+  pub fn cover_art(&self) -> Result<Either<CoverArt, Null>> {
+    cover_art(&self.data)
+  }
+
+  #[napi]
+  pub fn cover_art_async(&self, env: &Env) -> Result<AsyncBlock<Either<CoverArt, Null>>> {
+    cover_async(env, Arc::clone(&self.data))
   }
 
   #[napi]

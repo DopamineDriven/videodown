@@ -9,6 +9,8 @@ import {
   analyzeVideoAsync,
   audioPeaks,
   audioPeaksAsync,
+  coverArt,
+  coverArtAsync,
   decodeAudio,
   decodeAudioAsync,
   keyframes,
@@ -52,6 +54,8 @@ interface FixtureInfo {
   audio: FixtureAudio[]
   keyframes: number[]
   videoPackets: number
+  attachedPics: number
+  title: string | null
 }
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url))
@@ -75,8 +79,9 @@ const MP4_LIKE = [
   'rotated-270.mp4',
   'silent.mp4',
   'two-audio.mp4',
+  'h264-aac-cover.mp4',
 ]
-const MATROSKA = ['h264-aac.mkv', 'vp9-opus.webm', 'vp9-vorbis.webm']
+const MATROSKA = ['h264-aac.mkv', 'vp9-opus.webm', 'vp9-vorbis.webm', 'h264-aac-cover.mkv']
 
 // ── sniffing ────────────────────────────────────────────────────
 
@@ -116,7 +121,8 @@ test('ISOBMFF specs agree with ffprobe', (t) => {
     t.is(specs.source, `cdn://${name}`)
     t.true(specs.complete && !specs.truncated && !specs.fragmented, name)
     t.is(specs.declaredSize, truth.size, name)
-    t.is(specs.trackCount, truth.streams, name)
+    t.is(specs.trackCount, truth.streams - truth.attachedPics, name)
+    t.is(specs.title, truth.title, name)
     close(t, specs.durationSec, truth.duration, 1e-3, name)
     t.is(specs.durationMs, Math.round((specs.durationSec ?? 0) * 1000), name)
     t.is(specs.bitrateKbps, Math.floor((specs.bitrate ?? 0) / 1000), name)
@@ -206,7 +212,8 @@ test('mov carries the QuickTime brand and mime', (t) => {
   t.is(mp4.modificationTime, '2026-10-14T12:00:00Z')
   t.is(mp4.timescale, 1000)
   t.is(mp4.title, null)
-  t.is(mp4.writingApp, null)
+  t.regex(mp4.writingApp ?? '', /^Lavf/)
+  t.is(mp4.coverArt, null)
 })
 
 test('moov placement is reported and prefixes are flagged', (t) => {
@@ -338,6 +345,39 @@ test('a WebM prefix keeps the header and marks the block index partial', (t) => 
   t.is(index.count, 1)
   t.throws(() => audioPeaks(prefix), { message: /prefix/ })
   t.is(analyzeVideo(prefix).waveformStatus, 'truncated')
+})
+
+test('cover art comes out of the mp4 covr atom and the mkv attachment', async (t) => {
+  const jpeg = fixture('cover.jpg')
+  for (const name of ['h264-aac-cover.mp4', 'h264-aac-cover.mkv']) {
+    const buf = fixture(name)
+    const specs = parseVideo(buf)
+    t.deepEqual(specs.coverArt, { mime: 'image/jpeg', byteLength: jpeg.length, width: 320, height: 180 }, name)
+    const art = coverArt(buf)
+    t.truthy(art, name)
+    if (!art) continue
+    t.is(art.mime, 'image/jpeg')
+    t.is(art.byteLength, jpeg.length)
+    t.is(art.width, 320)
+    t.is(art.height, 180)
+    t.true(art.data instanceof Uint8Array)
+    t.true(Buffer.from(art.data).equals(jpeg), `${name} bytes`)
+    t.deepEqual(await coverArtAsync(buf), art, name)
+    const analysis = analyzeVideo(buf, { peakCount: 8 })
+    t.true(Buffer.from(analysis.coverArt?.data ?? []).equals(jpeg), `${name} analysis`)
+    t.is(analysis.specs.coverArt?.byteLength, jpeg.length)
+  }
+  t.is(parseVideo(fixture('h264-aac-cover.mp4')).title, 'Cover fixture')
+  // The covr atom sits inside moov: a header-only prefix still yields it.
+  const mp4 = fixture('h264-aac-cover.mp4')
+  const header = mp4.subarray(0, mp4.indexOf('mdat') + 4)
+  t.true(Buffer.from(coverArt(header)?.data ?? []).equals(jpeg))
+  t.is(parseVideo(header).complete, true)
+  for (const name of ['h264-aac-faststart.mp4', 'h264-aac.mkv', 'vp9-vorbis.webm', 'silent.mp4']) {
+    t.is(coverArt(fixture(name)), null, name)
+    t.is(parseVideo(fixture(name)).coverArt, null, name)
+    t.is(analyzeVideo(fixture(name), { peakCount: 4 }).coverArt, null, name)
+  }
 })
 
 test('Buffer and sliced Uint8Array inputs respect byteOffset', (t) => {
@@ -494,6 +534,10 @@ test('VideoService mirrors the standalone functions', async (t) => {
   t.deepEqual(await service.parseVideoAsync(webm), parseVideo(webm))
   t.deepEqual(service.keyframes(mp4), keyframes(mp4))
   t.deepEqual(await service.keyframesAsync(mp4), keyframes(mp4))
+  const cover = fixture('h264-aac-cover.mp4')
+  t.deepEqual(service.coverArt(cover), coverArt(cover))
+  t.deepEqual(await service.coverArtAsync(cover), coverArt(cover))
+  t.is(service.coverArt(mp4), null)
   t.deepEqual(service.decodeAudio(mp4), decodeAudio(mp4))
   t.deepEqual(await service.decodeAudioAsync(webm), decodeAudio(webm))
   t.deepEqual(service.audioPeaks(mp4, { peakCount: 50 }), audioPeaks(mp4, { peakCount: 50 }))
@@ -528,6 +572,11 @@ test('VideoDown snapshots once and serves every call', async (t) => {
   t.deepEqual(await down.metadataAsync(), parseVideo(buf, 'cdn://down'))
   t.deepEqual(down.keyframes(), keyframes(buf))
   t.deepEqual(await down.keyframesAsync(), keyframes(buf))
+  t.is(down.coverArt(), null)
+  t.is(await down.coverArtAsync(), null)
+  const withCover = new VideoDown(fixture('h264-aac-cover.mp4'))
+  t.deepEqual(withCover.coverArt(), coverArt(fixture('h264-aac-cover.mp4')))
+  t.deepEqual(await withCover.coverArtAsync(), coverArt(fixture('h264-aac-cover.mp4')))
   t.is(down.audioPeaks()?.peakCount, 32)
   t.is((await down.audioPeaksAsync({ peakCount: 7 }))?.peakCount, 7)
   t.deepEqual(down.decodeAudio(), decodeAudio(buf))

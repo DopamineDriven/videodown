@@ -1,6 +1,6 @@
 {
   "name": "@d0paminedriven/videodown",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Rust powered MP4/MOV/WebM/MKV metadata, keyframe index and audio-track waveform peaks for Node",
   "main": "index.js",
   "repository": {

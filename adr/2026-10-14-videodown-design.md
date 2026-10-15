@@ -40,7 +40,7 @@ src/lib.rs                    napi functions, promise() helper, VideoService and
 src/types.rs                  #[napi(object)] boundary types + builders from core
 src/core/mod.rs               audio_peaks (truncation gate → decode → reduce), analyze under rayon::join
 src/core/sniff.rs             magic → VideoKind (ISOBMFF by leading box, EBML by DocType)
-src/core/boxes.rs             bounds-checked ISOBMFF walker: box order, ftyp, mvhd, per-trak hdlr/mdhd/stsd fourcc, prefix detection
+src/core/boxes.rs             bounds-checked ISOBMFF walker: box order, ftyp, mvhd, per-trak hdlr/mdhd/stsd fourcc, udta/meta/ilst (covr, ©nam, ©too), prefix detection
 src/core/meta.rs              VideoMeta model + codec naming, rotation, ISO 8601, resolution/aspect labels
 src/core/mp4.rs               mp4parse over the moov slice; tracks, timing, stsz bitrates, stts/ctts/elst keyframes
 src/core/mkv.rs               purpose-built EBML reader: header, Info, Tracks, Cues, cluster block walk
@@ -173,6 +173,21 @@ present (`source: 'cues'`), else from those sync blocks (`'blocks'`); both are
 `CueTime` / block ticks × `TimecodeScale`, which is exactly the `pts_time`
 `ffprobe` prints for `K` packets. An index read from the blocks of a truncated
 buffer is marked `complete: false`.
+
+### cover art
+
+Some muxers embed a poster. ISOBMFF carries it as the iTunes-style `covr`
+item under `moov/udta/meta/ilst` (a `data` atom typed 13 JPEG / 14 PNG /
+27 BMP); ffmpeg writes it from an `attached_pic` stream and xAI's Grok Imagine
+Video output ships one. Matroska carries it as an attachment (`AttachedFile`
+with `FileName`, `FileMimeType`, `FileData`), `cover.jpg` by convention. The
+walker records the byte range, the text items `©nam` and `©too` fill `title`
+and `writingApp` for parity with Matroska, and the mime is sniffed from the
+magic bytes with the declared type as fallback. `width` and `height` come
+from the image header (JPEG SOF, PNG IHDR, WebP VP8/VP8L/VP8X, GIF, BMP), so
+no image decoder enters the crate. `VideoSpecs.coverArt` describes it;
+`coverArt()` and `analyzeVideo().coverArt` copy the bytes out. For mp4 the
+atom is inside `moov`, so the header-first prefix still yields the poster.
 
 ### audio
 
